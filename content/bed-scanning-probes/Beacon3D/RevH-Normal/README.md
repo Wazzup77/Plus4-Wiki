@@ -33,13 +33,14 @@ macro then there is a chance where the wrong bed mesh will be loaded.*
 
 I can confirm that the **QIDIBOX** 1.7 firmware update **DOES NOT**  break anything firmware wise for Beacon.  Beacon still works (and Klippain 5.1.1 also still works for those using that).
 
-The 1.7 firmware update for Qidibox WILL over-write your pre-existing `printer.cfg` and `gcode_macro.cfg` config files though, but it does make automatic backups of your old config files.
+The 1.7 firmware update for Qidibox WILL over-write your pre-existing `printer.cfg` and `gcode_macro.cfg` config files though, so be sure to make backups of your old config files.  You
+should not rely upon Qidi's firmware update scipts automatically making backup copies of your config during a firmware upgrade.
 
 What you need to do here is to just redo the following Beacon configuration guide and manually patch the config files.  Afterwards you should be up and running again.
 
 For those of you who just copy and pasted my original example configs, you will need to do that configuration manually until such time that I update those sample configs.
 
-*DO NOT copy and paste the sample configurations here if you have QIDIBOX installed until such time as I update them*
+*DO NOT copy and paste the my sample configuration files if you have QIDIBOX installed until such time as I update them.   In the meantime, use the examples from the guide only*
 
 ***
 
@@ -230,7 +231,7 @@ home_xy_position: 152.5, 152.5      # update with your safe Z home position
 home_z_hop: 5
 home_z_hop_speed: 30
 home_xy_move_speed: 300
-home_y_before_x: False
+home_y_before_x: True
 home_method: proximity
 home_method_when_homed: proximity
 home_autocalibrate: never
@@ -471,7 +472,9 @@ gcode:
 variable_k:1
 description: Prepare print bed, generate a bed mesh, and apply global Z nozzle offset
 gcode:
+    {% set accel = printer.toolhead.max_accel|int %}               # Take not of current acceleration value
     _FIND_Z_EQUALS_ZERO                                            # The user must make sure that nothing else homes Z after this call
+    M204 S1000
     {% if k|int==1 %}
         BED_MESH_CALIBRATE RUNS=2 PROFILE=kamp
         BED_MESH_PROFILE LOAD=kamp
@@ -482,6 +485,7 @@ gcode:
         SAVE_VARIABLE VARIABLE=profile_name VALUE='"default"'
         SET_GCODE_VARIABLE MACRO=G29 VARIABLE=k VALUE=1            # Reactivate KAMP/Adaptive mode for next time
     {% endif %}
+    M204 S{accel}
 ```
 
 - Add these 6 macros to the end of your file:
@@ -529,14 +533,21 @@ calibrated with the following typed into the Gcode Console:
 
 ```
 G32
+G28 X Y
+G1 X150 Y150
+BEACON_AUTO_CALIBRATE
 G29
 G31
 SAVE_CONFIG
 ```
 
-This will set the Plus4 to generate a `default` bed mesh (`G32`), then do a full calibration home
-and bed mesh (`G29`), and then finally put the Plus4 back into Kamp mode meshing ready for the
-next print (`G31`).  The whole lot gets saved afterwards (`SAVE_CONFIG`)
+This will:
+- instruct to generate a `default` bed mesh of the whole bed when doing a scan (`G32`)
+- home XY axis only (`G28 XY`)
+- collect the beacon calibration model (`BEACON_AUTO_CALIBRATE`)
+- do a full calibration home and bed mesh (`G29`)
+- put the Plus4 back into Kamp mode meshing ready for the next print (`G31`)
+- The whole lot gets saved to internal memory afterwards to persist across printer restarts (`SAVE_CONFIG`)
 
 ***
 
@@ -877,6 +888,7 @@ variable_bed_meshing_offset: -0.4           # Generate bed with this amount appl
                                             # Acceptable range is [-1.0, 1.0]
 description: Prepare print bed, generate a bed mesh, and apply global Z nozzle offset
 gcode:
+    {% set accel = printer.toolhead.max_accel|int %}         # Take note of current acceleration value
     {% set z_home_x = printer.configfile.settings.beacon.home_xy_position[0] %}
     {% set z_home_y = printer.configfile.settings.beacon.home_xy_position[1] %}
     # Read bed meshing offset value.  Cap value to within the [-1.0, 1.0] range
@@ -892,6 +904,7 @@ gcode:
     G1 Z{mesh_closer} F600
     SET_KINEMATIC_POSITION Z=2.0
 
+    M204 S1000            # Set acceleration to a less aggressive value for smoother bed meshing
     {% if k|int==1 %}
         BED_MESH_CALIBRATE RUNS=2 PROFILE=kamp
         BED_MESH_PROFILE LOAD=kamp
@@ -902,6 +915,7 @@ gcode:
         SAVE_VARIABLE VARIABLE=profile_name VALUE='"default"'
         SET_GCODE_VARIABLE MACRO=G29 VARIABLE=k VALUE=1
     {% endif %}
+    M204 S{accel}        # Restore old acceleration value
 
     G1 X{z_home_x} Y{z_home_y} F7200
     G1 Z{mesh_return} F600

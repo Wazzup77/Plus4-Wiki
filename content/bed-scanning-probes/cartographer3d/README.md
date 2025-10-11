@@ -102,7 +102,7 @@ cd ~/klippy-env
 
 sed -i 's/greenlet==2.0.2/greenlet==3.0.3/' ../klipper/scripts/klippy-requirements.txt # Need to upgrade this package for 3.12.
 
-sed -i '$a pyinotify==0.9.6\npyudev==0.24.3' ../klipper/scripts/klippy-requirements. # Need to add these packages, since Qidi forgot to update the req file
+sed -i '$a pyinotify==0.9.6\npyudev==0.24.3' ../klipper/scripts/klippy-requirements.txt # Need to add these packages, since Qidi forgot to update the req file
 
 source ~/klippy-env/bin/activate
 
@@ -171,6 +171,9 @@ Or power cycle the printer.
 
 > [!TIP]
 > Now is a good time to reinstall any Klipper Plugins you were using. If you wish to install Shake&Tune again, use the mainline version since Python is now at a newer version.
+
+> [!TIP]
+> If, when you restart your printer, you see the message `Klippy not connected`, please contact us on Discord. For a single user experiencing this, installing the `klippy-requirements.txt` without the `source ~/klippy-env/bin/activate` line helped - you can also try to repeat this step in that configuration.
 
 ## 5. Klipper Configs
 
